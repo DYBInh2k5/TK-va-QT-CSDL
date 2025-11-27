@@ -1,0 +1,167 @@
+7. Viết truy vấn (5 điểm)
+a. Tìm danh sách lớp trong học kỳ 25.1A
+sql
+Copy
+Edit
+SELECT * FROM Lop WHERE hocky = '25.1A';
+b. Tìm danh sách sinh viên học môn "Cơ sở dữ liệu"
+sql
+Copy
+Edit
+SELECT DISTINCT sv.mssv, sv.hoten
+FROM Sinhvien sv
+JOIN Hoc h ON sv.mssv = h.mssv
+JOIN Lop l ON h.malop = l.malop
+JOIN Monhoc m ON l.msmh = m.msmh
+WHERE m.tenmh = N'Cơ sở dữ liệu';
+c. Tính số lớp mở trong từng học kỳ
+sql
+Copy
+Edit
+SELECT hocky, COUNT(*) AS so_lop
+FROM Lop
+GROUP BY hocky;
+d. Tìm sinh viên học môn có điểm < 5
+sql
+Copy
+Edit
+SELECT DISTINCT sv.mssv, sv.hoten, h.diem
+FROM Sinhvien sv
+JOIN Hoc h ON sv.mssv = h.mssv
+WHERE h.diem < 5;
+e. Tìm lớp có sĩ số < 2
+sql
+Copy
+Edit
+SELECT l.malop, COUNT(h.mssv) AS si_so
+FROM Lop l
+JOIN Hoc h ON l.malop = h.malop
+GROUP BY l.malop
+HAVING COUNT(h.mssv) < 2;
+8. Viết các script
+a. Hủy lớp có sĩ số < 5
+sql
+Copy
+Edit
+DELETE FROM Lop
+WHERE malop IN (
+    SELECT h.malop
+    FROM Hoc h
+    GROUP BY h.malop
+    HAVING COUNT(h.mssv) < 5
+);
+b. Ghép lớp cùng môn, cùng học kỳ, cùng giảng viên, sĩ số < 15
+Yêu cầu phức tạp - cần xử lý theo batch, ở đây chỉ hướng logic:
+
+sql
+Copy
+Edit
+-- 1. Tìm các lớp cần ghép
+-- 2. Gom sinh viên lại theo nhóm msmh, hocky, giangvien
+-- 3. Xoá lớp cũ, tạo lớp mới, phân phối lại sinh viên sao sĩ số mỗi lớp <= 15
+c. Hủy đăng ký môn “Cơ sở dữ liệu” nếu chưa đậu “Nhập môn lập trình”
+sql
+Copy
+Edit
+DELETE FROM Hoc
+WHERE malop IN (
+    SELECT l1.malop
+    FROM Lop l1
+    JOIN Monhoc m1 ON l1.msmh = m1.msmh
+    WHERE m1.tenmh = N'Cơ sở dữ liệu'
+)
+AND mssv IN (
+    SELECT h.mssv
+    FROM Hoc h
+    JOIN Lop l2 ON h.malop = l2.malop
+    JOIN Monhoc m2 ON l2.msmh = m2.msmh
+    WHERE m2.tenmh = N'Nhập môn lập trình'
+    GROUP BY h.mssv
+    HAVING MAX(h.diem) < 5
+);
+9. Tạo các thủ tục (proc)
+Proc1: Thông tin môn học của sinh viên
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc1
+    @mssv CHAR(7), @msmh CHAR(9),
+    @solan INT OUTPUT, @maxdiem DECIMAL(5,2) OUTPUT, @tbdiem DECIMAL(5,2) OUTPUT
+AS
+BEGIN
+    SELECT @solan = COUNT(*), @maxdiem = MAX(diem), @tbdiem = AVG(diem)
+    FROM Hoc h
+    JOIN Lop l ON h.malop = l.malop
+    WHERE h.mssv = @mssv AND l.msmh = @msmh;
+END
+Proc2: Thống kê lớp
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc2
+    @malop CHAR(12), @siso INT OUTPUT, @dat INT OUTPUT, @rot INT OUTPUT
+AS
+BEGIN
+    SELECT @siso = COUNT(*),
+           @dat = SUM(CASE WHEN diem >= 5 THEN 1 ELSE 0 END),
+           @rot = SUM(CASE WHEN diem < 5 THEN 1 ELSE 0 END)
+    FROM Hoc
+    WHERE malop = @malop;
+END
+Proc3: Tạo lớp mới và đưa SV chưa đạt vào
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc3
+    @msmh CHAR(9), @hocky CHAR(5), @giangvien NVARCHAR(50)
+AS
+BEGIN
+    DECLARE @malop CHAR(12) = @msmh + '_RE';
+    INSERT INTO Lop VALUES (@malop, @msmh, @hocky, @giangvien);
+
+    INSERT INTO Hoc (mssv, malop)
+    SELECT DISTINCT h.mssv, @malop
+    FROM Hoc h
+    JOIN Lop l ON h.malop = l.malop
+    WHERE l.msmh = @msmh AND h.diem < 5;
+END
+Proc4: Tính GPA
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc4
+    @mssv CHAR(7), @gpa DECIMAL(5,2) OUTPUT
+AS
+BEGIN
+    SELECT @gpa = AVG(diem) FROM Hoc WHERE mssv = @mssv;
+END
+Proc5: Số lớp, số môn mỗi học kỳ theo giảng viên
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc5
+    @hoten NVARCHAR(50)
+AS
+BEGIN
+    SELECT hocky, COUNT(DISTINCT malop) AS so_lop, COUNT(DISTINCT msmh) AS so_mon
+    FROM Lop
+    WHERE giangvien = @hoten
+    GROUP BY hocky;
+END
+Proc6: DS sinh viên đạt học bổng
+sql
+Copy
+Edit
+CREATE PROCEDURE Proc6
+    @hocky CHAR(5)
+AS
+BEGIN
+    SELECT h.mssv
+    FROM Hoc h
+    JOIN Lop l ON h.malop = l.malop
+    WHERE l.hocky <= @hocky
+    GROUP BY h.mssv
+    HAVING AVG(diem) > 8
+       AND SUM(CASE WHEN diem < 5 THEN 1 ELSE 0 END) = 0
+       AND COUNT(DISTINCT l.hocky + l.msmh) >= 3;
+END
