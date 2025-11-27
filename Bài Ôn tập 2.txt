@@ -1,0 +1,477 @@
+Bài Ôn tập 2
+✅ PHẦN 1: TẠO DATABASE, TABLE, RÀNG BUỘC
+🧱 1.1. Tạo CSDL
+sql
+Sao chép
+Chỉnh sửa
+-- Tạo database có tên QLThueXe
+CREATE DATABASE QLThueXe;
+GO
+
+-- Sử dụng database vừa tạo
+USE QLThueXe;
+GO
+📋 1.2. Tạo các bảng
+Bảng Xe
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE Xe (
+    maxe CHAR(4) NOT NULL,                 -- Ví dụ: X01, X02
+    tenxe NVARCHAR(100) NOT NULL,         -- Tên xe, ví dụ: Toyota Vios
+    CONSTRAINT PK_Xe PRIMARY KEY (maxe),  -- Khóa chính: maxe
+    CONSTRAINT CK_maxe CHECK (maxe LIKE 'X[0-9][0-9]')  -- CHECK: phải bắt đầu bằng X và 2 số
+);
+Bảng KhachHang
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE KhachHang (
+    makhach CHAR(5) NOT NULL,                 -- Ví dụ: KH01
+    hoten NVARCHAR(100) NOT NULL,            -- Họ tên khách
+    CONSTRAINT PK_Khach PRIMARY KEY (makhach)
+);
+Bảng HopDongThueXe
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE HopDongThueXe (
+    mahopdong CHAR(10) NOT NULL,               -- Mã hợp đồng
+    ngaythue DATE DEFAULT GETDATE(),           -- Ngày thuê, mặc định là ngày hiện hành
+    makhach CHAR(5) NOT NULL,                  -- Tham chiếu đến KhachHang
+    CONSTRAINT PK_HopDong PRIMARY KEY (mahopdong),
+    CONSTRAINT FK_HD_Khach FOREIGN KEY (makhach)
+        REFERENCES KhachHang(makhach)
+);
+Bảng ChiTietHopDong
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE ChiTietHopDong (
+    mahopdong CHAR(10) NOT NULL,
+    maxe CHAR(4) NOT NULL,
+    ngaynhan DATE NOT NULL,
+    ngaytra DATE NOT NULL,
+    giathue MONEY NOT NULL,
+    CONSTRAINT PK_CTHD PRIMARY KEY (mahopdong, maxe),
+    CONSTRAINT FK_CTHD_HD FOREIGN KEY (mahopdong)
+        REFERENCES HopDongThueXe(mahopdong),
+    CONSTRAINT FK_CTHD_XE FOREIGN KEY (maxe)
+        REFERENCES Xe(maxe)
+);
+🧾 1.3. Nhập dữ liệu
+sql
+Sao chép
+Chỉnh sửa
+-- Dữ liệu bảng Xe
+INSERT INTO Xe VALUES
+('X01', N'Toyota Vios'),
+('X02', N'Toyota Camry'),
+('X03', N'Hyundai i10 2024'),
+('X04', N'Hyundai Venue 2023'),
+('X05', N'Ford Everest');
+
+-- Dữ liệu bảng KhachHang
+INSERT INTO KhachHang VALUES
+('KH01', N'Bùi Thu Hà'),
+('KH02', N'Nguyễn Hải Hà');
+
+-- Dữ liệu bảng HopDongThueXe
+INSERT INTO HopDongThueXe VALUES
+('HD0001', '2025-02-01', 'KH01'),
+('HD0002', '2025-03-07', 'KH02');
+
+-- Dữ liệu bảng ChiTietHopDong
+INSERT INTO ChiTietHopDong VALUES
+('HD0001', 'X01', '2025-02-03', '2025-02-06', 3000000),
+('HD0001', 'X02', '2025-02-03', '2025-02-06', 3000000),
+('HD0001', 'X03', '2025-02-04', '2025-02-06', 2000000),
+('HD0002', 'X04', '2025-03-10', '2025-03-31', 15000000),
+('HD0002', 'X01', '2025-03-08', '2025-03-09', 1000000);
+✅ PHẦN 2: TRUY VẤN (5 điểm)
+2.1. Khách hàng "Nguyễn Hải Hà" đã thuê những xe nào?
+sql
+Sao chép
+Chỉnh sửa
+SELECT DISTINCT tenxe
+FROM KhachHang kh
+JOIN HopDongThueXe hd ON kh.makhach = hd.makhach
+JOIN ChiTietHopDong ct ON hd.mahopdong = ct.mahopdong
+JOIN Xe x ON ct.maxe = x.maxe
+WHERE kh.hoten = N'Nguyễn Hải Hà';
+2.2. Họ tên khách hàng và tên xe đã thuê
+sql
+Sao chép
+Chỉnh sửa
+SELECT kh.hoten, x.tenxe
+FROM KhachHang kh
+JOIN HopDongThueXe hd ON kh.makhach = hd.makhach
+JOIN ChiTietHopDong ct ON hd.mahopdong = ct.mahopdong
+JOIN Xe x ON ct.maxe = x.maxe;
+2.3. Mã xe, tên xe chứa từ "Toyota"
+sql
+Sao chép
+Chỉnh sửa
+SELECT maxe, tenxe
+FROM Xe
+WHERE tenxe LIKE N'%Toyota%';
+2.4. Tổng tiền của từng hợp đồng
+sql
+Sao chép
+Chỉnh sửa
+SELECT mahopdong, SUM(giathue) AS TongTien
+FROM ChiTietHopDong
+GROUP BY mahopdong;
+2.5. Tên xe có tổng tiền thuê cao nhất
+sql
+Sao chép
+Chỉnh sửa
+SELECT TOP 1 tenxe, SUM(giathue) AS TongTien
+FROM Xe x
+JOIN ChiTietHopDong ct ON x.maxe = ct.maxe
+GROUP BY tenxe
+ORDER BY SUM(giathue) DESC;
+
+✅ PHẦN 3: SCRIPT XỬ LÝ HỢP ĐỒNG
+🛑 3.1. Hủy hợp đồng vào ngày 30/2 hoặc 31/2 (ngày không thực tế)
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+DELETE hd
+FROM HopDongThueXe hd
+WHERE MONTH(ngaythue) = 2
+  AND DAY(ngaythue) IN (30, 31);
+❗ Chú ý: 30/2, 31/2 là ngày không tồn tại, nên query này chẳng xóa gì, giống giả lập hủy hợp đồng sai ngày.
+
+🔄 3.2. Ghép hợp đồng cùng ngày và cùng khách nếu tổng giá thuê < 100 triệu
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+;WITH CTE AS (
+  SELECT makhach, ngaythue, 
+         STRING_AGG(mahopdong, ',') AS ds_hd,
+         SUM(giathue) AS tongtien
+  FROM HopDongThueXe hd
+  JOIN ChiTietHopDong ct ON hd.mahopdong = ct.mahopdong
+  GROUP BY makhach, ngaythue
+  HAVING COUNT(DISTINCT hd.mahopdong) > 1
+     AND SUM(giathue) < 100000000
+)
+-- Xóa các hợp đồng cũ
+DELETE hd
+FROM HopDongThueXe hd
+JOIN CTE c ON hd.makhach = c.makhach AND hd.ngaythue = c.ngaythue;
+
+-- Tạo hợp đồng mới gộp
+INSERT INTO HopDongThueXe (mahopdong, ngaythue, makhach)
+SELECT ds_hd, ngaythue, makhach
+FROM CTE;
+✂️ 3.3. Tách hợp đồng nhiều loại xe thành mỗi hợp đồng 1 xe
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+DECLARE @hd CHAR(10), @xe CHAR(4), @newHD CHAR(10), @i INT = 1;
+
+DECLARE cur CURSOR FOR
+SELECT mahopdong, maxe
+FROM ChiTietHopDong
+ORDER BY mahopdong;
+
+OPEN cur;
+FETCH NEXT FROM cur INTO @hd, @xe;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @newHD = @hd + RIGHT('0' + CAST(@i AS VARCHAR), 2);
+    INSERT INTO HopDongThueXe 
+        (mahopdong, ngaythue, makhach)
+    SELECT @newHD, ngaythue, makhach
+    FROM HopDongThueXe WHERE mahopdong = @hd;
+
+    INSERT INTO ChiTietHopDong
+        SELECT @newHD, maxe, ngaynhan, ngaytra, giathue
+        FROM ChiTietHopDong
+        WHERE mahopdong = @hd AND maxe = @xe;
+
+    FETCH NEXT FROM cur INTO @hd, @xe;
+    SET @i = @i + 1;
+END;
+
+CLOSE cur;
+DEALLOCATE cur;
+
+-- Cuối cùng có thể xóa hợp đồng gốc nếu muốn
+-- DELETE FROM ChiTietHopDong WHERE mahopdong LIKE 'HD000%';
+✅ PHẦN 4: STORED PROCEDURES
+🧾 Proc1: Tham số @mahd, xuất tổng tiền và số xe
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_hd_info
+    @mahd CHAR(10),
+    @tongtien MONEY OUTPUT,
+    @soluong INT OUTPUT
+AS
+BEGIN
+    SELECT @tongtien = SUM(giathue),
+           @soluong = COUNT(*)
+    FROM ChiTietHopDong
+    WHERE mahopdong = @mahd;
+END;
+GO
+🧾 Proc2: Tham số @tenxe,@thang, tính tổng tiền cho thuê xe trong tháng
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_tien_theoxe
+    @tenxe NVARCHAR(100),
+    @thang INT,
+    @tien OUTPUT MONEY
+AS
+BEGIN
+    SELECT @tien = SUM(ct.giathue)
+    FROM ChiTietHopDong ct
+    JOIN Xe x ON ct.maxe = x.maxe
+    JOIN HopDongThueXe hd ON ct.mahopdong = hd.mahopdong
+    WHERE x.tenxe = @tenxe
+      AND MONTH(hd.ngaythue) = @thang;
+END;
+GO
+🧾 Proc3: @makh, @soxe, @songay, @ngaynhan: tạo hợp đồng và chi tiết
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_new_hd
+    @makh CHAR(5),
+    @soxe INT,
+    @songay INT,
+    @ngaynhan DATE
+AS
+BEGIN
+    DECLARE @newHD CHAR(10) = CONCAT('HD', FORMAT(GETDATE(), 'yyyyMMddHHmmss'));
+    INSERT INTO HopDongThueXe(mahopdong, makhach) VALUES(@newHD, @makh);
+    INSERT INTO ChiTietHopDong(mahopdong, maxe, ngaynhan, ngaytra, giathue)
+    SELECT TOP(@soxe) @newHD, maxe, @ngaynhan, DATEADD(DAY, @songay, @ngaynhan), 0
+    FROM Xe;
+END;
+GO
+🧾 Proc4: Tính tổng tiền thuê cho khách @makh
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_tien_kh
+   @makh CHAR(5),
+   @tongtien MONEY OUTPUT
+AS
+BEGIN
+    SELECT @tongtien = SUM(ct.giathue)
+    FROM ChiTietHopDong ct
+    JOIN HopDongThueXe hd ON ct.mahopdong = hd.mahopdong
+    WHERE hd.makhach = @makh;
+END;
+GO
+🧾 Proc6: Danh sách tên xe thuê đủ 12 tháng với doanh thu >=10 triệu/tháng
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_xe_luat1nam
+    @nam INT
+AS
+BEGIN
+    SELECT x.tenxe
+    FROM Xe x
+    JOIN ChiTietHopDong ct ON x.maxe = ct.maxe
+    JOIN HopDongThueXe hd ON ct.mahopdong = hd.mahopdong
+    WHERE YEAR(hd.ngaythue) = @nam
+    GROUP BY x.tenxe
+    HAVING COUNT(DISTINCT MONTH(hd.ngaythue)) = 12
+       AND MIN(
+          CASE WHEN MONTH(hd.ngaythue)=1 THEN SUM(ct.giathue) END
+       ) >= 10000000;
+END;
+GO
+✅ PHẦN 5: TRIGGER KIỂM TRA BUSINESS RULES
+🎯 Trigger: Tổng tiền 1 hợp đồng không quá 100 triệu
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_chk_hd_tongtien
+ON ChiTietHopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+      SELECT ct.mahopdong
+      FROM ChiTietHopDong ct
+      GROUP BY ct.mahopdong
+      HAVING SUM(giathue) > 100000000
+    )
+    BEGIN
+        RAISERROR('Tổng tiền hợp đồng không được >100 triệu', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+🚫 Trigger: "Nguyễn Hải Hà" không thuê xe Toyota
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_no_nhh_toyota
+ON ChiTietHopDong
+AFTER INSERT
+AS
+BEGIN
+    IF EXISTS (
+      SELECT 1
+      FROM inserted i
+      JOIN HopDongThueXe hd ON i.mahopdong = hd.mahopdong
+      JOIN KhachHang kh ON hd.makhach = kh.makhach
+      JOIN Xe x ON i.maxe = x.maxe
+      WHERE kh.hoten = N'Nguyễn Hải Hà' AND x.tenxe LIKE N'%Toyota%'
+    )
+    BEGIN
+        RAISERROR('Nguyễn Hải Hà không được thuê xe Toyota', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+🚗 Trigger: 1 xe không được thuê trùng thời điểm
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_no_double_rent
+ON ChiTietHopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+      SELECT i.maxe
+      FROM inserted i
+      JOIN ChiTietHopDong ct ON i.maxe = ct.maxe
+      WHERE i.mahopdong <> ct.mahopdong
+        AND i.ngaynhan <= ct.ngaytra AND ct.ngaynhan <= i.ngaytra
+    )
+    BEGIN
+        RAISERROR('Xe đã được thuê trùng thời điểm', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+🟢 Trigger: Kiểm tra ngày nhận < ngày trả
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_chk_dates
+ON ChiTietHopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+      SELECT 1 FROM inserted i
+      WHERE i.ngaynhan >= i.ngaytra
+    )
+    BEGIN
+        RAISERROR('ngaynhan phải < ngaytra', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+💰 Trigger: Toyota không thuê dưới 500K/ngày
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_chk_toyota_price
+ON ChiTietHopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+      SELECT 1
+      FROM inserted i
+      JOIN Xe x ON i.maxe = x.maxe
+      WHERE x.tenxe LIKE N'%Toyota%'
+        AND i.giathue < 500000 * DATEDIFF(DAY, i.ngaynhan, i.ngaytra)
+    )
+    BEGIN
+        RAISERROR('Xe Toyota không cho thuê dưới 500k/ngày', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+🕐 Trigger: Hyundai thuê tối thiểu 2 ngày
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_chk_hyundai_days
+ON ChiTietHopDong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+      SELECT 1
+      FROM inserted i
+      JOIN Xe x ON i.maxe = x.maxe
+      WHERE x.tenxe LIKE N'%Hyundai%'
+        AND DATEDIFF(DAY, i.ngaynhan, i.ngaytra) < 2
+    )
+    BEGIN
+        RAISERROR('Xe Hyundai phải thuê tối thiểu 2 ngày', 16,1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+✅ PHẦN 6: SECURITY – ROLE & USER
+🛡️ Tạo role & phân quyền
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE ROLE ChuCuaHang;
+GRANT SELECT ON Xe TO ChuCuaHang;
+GRANT SELECT ON KhachHang TO ChuCuaHang;
+GRANT SELECT ON HopDongThueXe TO ChuCuaHang;
+GRANT SELECT ON ChiTietHopDong TO ChuCuaHang;
+
+CREATE ROLE Khach;
+GRANT SELECT ON HopDongThueXe TO Khach;
+GRANT SELECT ON ChiTietHopDong TO Khach;
+
+CREATE ROLE Nhanvien;
+GRANT SELECT, INSERT, UPDATE, DELETE ON Xe TO Nhanvien;
+GRANT SELECT, INSERT, UPDATE, DELETE ON KhachHang TO Nhanvien;
+GRANT SELECT, INSERT, UPDATE, DELETE ON HopDongThueXe TO Nhanvien;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ChiTietHopDong TO Nhanvien;
+👤 Tạo user và gán role
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE USER VTTHA WITHOUT LOGIN;
+EXEC sp_addrolemember 'ChuCuaHang', 'VTTHA';
+
+CREATE USER NguyenAnh WITHOUT LOGIN;
+EXEC sp_addrolemember 'Nhanvien', 'NguyenAnh';
+
+CREATE USER HoangLan WITHOUT LOGIN;
+EXEC sp_addrolemember 'Khach', 'HoangLan';
+✅ Kiểm tra quyền của user
+sql
+Sao chép
+Chỉnh sửa
+--SQL1 -- Giả sử bạn đang đăng nhập là VTTHA
+SELECT * FROM Xe;           -- Được phép
+INSERT INTO Xe(...)        -- Bị lỗi nếu không phải `Nhanvien`

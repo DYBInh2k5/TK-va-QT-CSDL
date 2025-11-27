@@ -1,0 +1,421 @@
+bài ôn 4
+ 1.1. Tạo Database
+sql
+Sao chép
+Chỉnh sửa
+-- Tạo cơ sở dữ liệu
+CREATE DATABASE QLChamCong;
+GO
+
+-- Sử dụng database vừa tạo
+USE QLChamCong;
+GO
+🔹 1.2. Tạo các bảng
+📦 Bảng PhongBan
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE PhongBan (
+    maphongban CHAR(3) NOT NULL,
+    tenphongban NVARCHAR(100) NOT NULL,
+    CONSTRAINT PK_PhongBan PRIMARY KEY (maphongban),
+    CONSTRAINT CK_MaPhong CHECK (maphongban LIKE 'P[0-9][0-9]')
+);
+🔎 CK_MaPhong: ràng buộc mã phòng bắt đầu bằng P và 2 chữ số (VD: P01, P02)
+
+👤 Bảng NhanVien
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE NhanVien (
+    manhanvien CHAR(4) NOT NULL,
+    hoten NVARCHAR(100) NOT NULL,
+    luongcoban MONEY NOT NULL,
+    maphongban CHAR(3) NOT NULL,
+    CONSTRAINT PK_NhanVien PRIMARY KEY (manhanvien),
+    CONSTRAINT FK_NV_Phong FOREIGN KEY (maphongban) REFERENCES PhongBan(maphongban)
+);
+📊 Bảng BangChamCong
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE BangChamCong (
+    mabangchamcong CHAR(4) NOT NULL,
+    thang CHAR(7) NOT NULL,  -- Định dạng: MM/YYYY
+    maphongban CHAR(3) NOT NULL,
+    CONSTRAINT PK_BangCC PRIMARY KEY (mabangchamcong),
+    CONSTRAINT FK_BCC_Phong FOREIGN KEY (maphongban) REFERENCES PhongBan(maphongban)
+);
+📝 Bảng ChamCong
+sql
+Sao chép
+Chỉnh sửa
+CREATE TABLE ChamCong (
+    manhanvien CHAR(4) NOT NULL,
+    mabangchamcong CHAR(4) NOT NULL,
+    songaycong INT DEFAULT 26,  -- ràng buộc default
+    CONSTRAINT PK_ChamCong PRIMARY KEY (manhanvien, mabangchamcong),
+    CONSTRAINT FK_CC_NV FOREIGN KEY (manhanvien) REFERENCES NhanVien(manhanvien),
+    CONSTRAINT FK_CC_BCC FOREIGN KEY (mabangchamcong) REFERENCES BangChamCong(mabangchamcong)
+);
+🔹 1.3. Nhập dữ liệu mẫu
+sql
+Sao chép
+Chỉnh sửa
+-- Dữ liệu phòng ban
+INSERT INTO PhongBan VALUES
+('P01', N'Phòng thu mua'),
+('P02', N'Phòng sản xuất');
+
+-- Dữ liệu nhân viên
+INSERT INTO NhanVien VALUES
+('NV01', N'Huỳnh Thị Thúy Anh', 7000000, 'P01'),
+('NV02', N'Lương Thị Thanh Bình', 7500000, 'P01'),
+('NV03', N'Trần Thị Kim Duyên', 8000000, 'P02'),
+('NV04', N'Trần Thụy Phương Đài', 7000000, 'P02'),
+('NV05', N'Bùi Thu Hà', 7500000, 'P02'),
+('NV06', N'Nguyễn Hải Hà', 8200000, 'P02');
+
+-- Dữ liệu bảng chấm công
+INSERT INTO BangChamCong VALUES
+('B01', '01/2025', 'P01'),
+('B02', '01/2025', 'P02'),
+('B03', '02/2025', 'P01'),
+('B04', '02/2025', 'P02');
+
+-- Dữ liệu chấm công
+INSERT INTO ChamCong VALUES
+('NV01', 'B01', 20),
+('NV02', 'B01', 21),
+('NV03', 'B02', 23),
+('NV04', 'B02', 24),
+('NV05', 'B02', 26),
+('NV06', 'B02', 25),
+('NV01', 'B03', 24),
+('NV02', 'B03', 26),
+('NV03', 'B04', 23),
+('NV04', 'B04', 22),
+('NV05', 'B04', 23),
+('NV06', 'B04', 24);
+
+PHẦN 2: TRUY VẤN (5 điểm)
+🔎 2.1. Tìm nhân viên có lương cơ bản > 8 triệu
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+SELECT hoten, luongcoban
+FROM NhanVien
+WHERE luongcoban > 8000000;
+🔎 2.2. Tìm mã + họ tên nhân viên thuộc phòng sản xuất
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+SELECT manhanvien, hoten
+FROM NhanVien
+WHERE maphongban = 'P02';
+🔎 2.3. Tìm họ tên nhân viên và tên phòng ban của họ
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+SELECT nv.hoten, pb.tenphongban
+FROM NhanVien nv
+JOIN PhongBan pb ON nv.maphongban = pb.maphongban;
+🔎 2.4. Tên phòng ban và số lượng nhân viên
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+SELECT pb.tenphongban, COUNT(nv.manhanvien) AS soluong_nv
+FROM PhongBan pb
+LEFT JOIN NhanVien nv ON pb.maphongban = nv.maphongban
+GROUP BY pb.tenphongban;
+🔎 2.5. Lương tháng của nhân viên từng tháng
+Công thức: lương tháng = (lương cơ bản * số ngày công) / 26
+
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+SELECT nv.manhanvien, nv.hoten, bc.thang, 
+       (nv.luongcoban * cc.songaycong) / 26 AS luong_thang
+FROM ChamCong cc
+JOIN NhanVien nv ON cc.manhanvien = nv.manhanvien
+JOIN BangChamCong bc ON cc.mabangchamcong = bc.mabangchamcong;
+✅ PHẦN 3: SCRIPT (Xử lý bảng chấm công)
+🗑️ 3.1. Xóa bảng chấm công tháng 6/2025
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+DELETE FROM BangChamCong
+WHERE thang = '06/2025';
+🆕 3.2. Tạo bảng chấm công 6/2025 + chấm công 26 ngày
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+-- Tạo bảng chấm công
+INSERT INTO BangChamCong VALUES
+('B06_1', '06/2025', 'P01'),
+('B06_2', '06/2025', 'P02');
+
+-- Chấm công tất cả nhân viên
+INSERT INTO ChamCong
+SELECT manhanvien,
+       CASE 
+           WHEN maphongban = 'P01' THEN 'B06_1'
+           ELSE 'B06_2'
+       END,
+       26
+FROM NhanVien;
+✅ PHẦN 4: STORED PROCEDURES
+🧾 Proc1: Tính ngày công + lương tháng của 1 nhân viên
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_nhanvien_luong
+    @manv CHAR(4),
+    @thang CHAR(7),
+    @songay INT OUTPUT,
+    @luong MONEY OUTPUT
+AS
+BEGIN
+    SELECT TOP 1 @songay = cc.songaycong,
+                 @luong = (nv.luongcoban * cc.songaycong) / 26
+    FROM ChamCong cc
+    JOIN NhanVien nv ON cc.manhanvien = nv.manhanvien
+    JOIN BangChamCong bc ON cc.mabangchamcong = bc.mabangchamcong
+    WHERE cc.manhanvien = @manv AND bc.thang = @thang;
+END;
+🧾 Proc2: Tổng lương phòng ban theo tháng
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_tongluong_phong
+    @maphong CHAR(3),
+    @thang CHAR(7),
+    @tongluong MONEY OUTPUT
+AS
+BEGIN
+    SELECT @tongluong = SUM(nv.luongcoban * cc.songaycong / 26)
+    FROM ChamCong cc
+    JOIN NhanVien nv ON cc.manhanvien = nv.manhanvien
+    JOIN BangChamCong bc ON cc.mabangchamcong = bc.mabangchamcong
+    WHERE bc.maphongban = @maphong AND bc.thang = @thang;
+END;
+🧾 Proc3: Cập nhật mã phòng ban và bảng chấm công
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_chuyenphong
+    @manv CHAR(4),
+    @maphongmoi CHAR(3),
+    @thang CHAR(7)
+AS
+BEGIN
+    -- Cập nhật mã phòng ban trong nhân viên
+    UPDATE NhanVien
+    SET maphongban = @maphongmoi
+    WHERE manhanvien = @manv;
+
+    -- Tìm bảng chấm công tương ứng
+    DECLARE @bcc CHAR(4);
+    SELECT TOP 1 @bcc = mabangchamcong
+    FROM BangChamCong
+    WHERE thang = @thang AND maphongban = @maphongmoi;
+
+    -- Cập nhật bảng chấm công
+    UPDATE ChamCong
+    SET mabangchamcong = @bcc
+    WHERE manhanvien = @manv;
+END;
+🧾 Proc4: Tổng ngày công và lương chi của toàn công ty tháng X
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_tongcong_congty
+    @thang CHAR(7),
+    @tongngay INT OUTPUT,
+    @tongluong MONEY OUTPUT
+AS
+BEGIN
+    SELECT @tongngay = SUM(cc.songaycong),
+           @tongluong = SUM(nv.luongcoban * cc.songaycong / 26)
+    FROM ChamCong cc
+    JOIN NhanVien nv ON cc.manhanvien = nv.manhanvien
+    JOIN BangChamCong bc ON cc.mabangchamcong = bc.mabangchamcong
+    WHERE bc.thang = @thang;
+END;
+🧾 Proc6: Tăng lương cho nhân viên lương < 5 triệu, không vượt quỹ
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE PROCEDURE proc_nangluong
+    @quyluong MONEY
+AS
+BEGIN
+    DECLARE @tong_moi MONEY = 0;
+
+    DECLARE cur CURSOR FOR
+    SELECT manhanvien, luongcoban FROM NhanVien WHERE luongcoban < 5000000;
+
+    DECLARE @manv CHAR(4), @luongcu MONEY, @luongmoi MONEY;
+
+    OPEN cur;
+    FETCH NEXT FROM cur INTO @manv, @luongcu;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @luongmoi = @luongcu * 1.1;
+        IF @tong_moi + (@luongmoi - @luongcu) <= @quyluong
+        BEGIN
+            UPDATE NhanVien SET luongcoban = @luongmoi WHERE manhanvien = @manv;
+            SET @tong_moi = @tong_moi + (@luongmoi - @luongcu);
+        END
+
+        FETCH NEXT FROM cur INTO @manv, @luongcu;
+    END;
+
+    CLOSE cur;
+    DEALLOCATE cur;
+END;
+✅ PHẦN 5: TRIGGER
+🚨 Trigger: lương cơ bản không quá 40 triệu
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_luong_max
+ON NhanVien
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT * FROM inserted WHERE luongcoban > 40000000
+    )
+    BEGIN
+        RAISERROR('Lương cơ bản không được vượt quá 40 triệu', 16, 1);
+        ROLLBACK;
+    END
+END;
+🚨 Trigger: phòng sản xuất không có nhân viên < 10 ngày công mỗi tháng
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_cong_sp
+ON ChamCong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT * FROM inserted i
+        JOIN NhanVien nv ON i.manhanvien = nv.manhanvien
+        WHERE nv.maphongban = 'P02' AND i.songaycong < 10
+    )
+    BEGIN
+        RAISERROR('Phòng sản xuất không được có nhân viên làm dưới 10 ngày', 16, 1);
+        ROLLBACK;
+    END
+END;
+🚨 Trigger: nhân viên phải chấm công đúng bảng phòng mình
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_cc_dungphong
+ON ChamCong
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT * FROM inserted i
+        JOIN BangChamCong bc ON i.mabangchamcong = bc.mabangchamcong
+        JOIN NhanVien nv ON i.manhanvien = nv.manhanvien
+        WHERE bc.maphongban <> nv.maphongban
+    )
+    BEGIN
+        RAISERROR('Nhân viên phải được chấm công đúng phòng ban của mình', 16, 1);
+        ROLLBACK;
+    END
+END;
+🚨 Trigger: 1 phòng không được có >1 bảng công/tháng
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_1bcc_1thang
+ON BangChamCong
+AFTER INSERT
+AS
+BEGIN
+    IF EXISTS (
+        SELECT maphongban, thang
+        FROM BangChamCong
+        GROUP BY maphongban, thang
+        HAVING COUNT(*) > 1
+    )
+    BEGIN
+        RAISERROR('1 phòng không được có hơn 1 bảng công/tháng', 16, 1);
+        ROLLBACK;
+    END
+END;
+🚨 Trigger: phòng thu mua không > 15 nhân viên
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE TRIGGER trg_phong_thumuagia
+ON NhanVien
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF (SELECT COUNT(*) FROM NhanVien WHERE maphongban = 'P01') > 15
+    BEGIN
+        RAISERROR('Phòng thu mua không được có hơn 15 nhân viên', 16, 1);
+        ROLLBACK;
+    END
+END;
+✅ PHẦN 6: SECURITY
+👥 Tạo Role
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+-- Role: NhanVien
+CREATE ROLE nhanvien;
+GRANT SELECT ON PhongBan TO nhanvien;
+GRANT SELECT ON NhanVien TO nhanvien;
+GRANT SELECT ON BangChamCong TO nhanvien;
+GRANT SELECT ON ChamCong TO nhanvien;
+
+-- Role: NhanSu
+CREATE ROLE nhansu;
+GRANT SELECT, INSERT, UPDATE, DELETE ON PhongBan TO nhansu;
+GRANT SELECT, INSERT, UPDATE, DELETE ON NhanVien TO nhansu;
+GRANT SELECT, INSERT, UPDATE, DELETE ON BangChamCong TO nhansu;
+
+-- Role: NguoiChamCong
+CREATE ROLE nguoichamcong;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ChamCong TO nguoichamcong;
+👤 Tạo user và gán role
+sql
+Sao chép
+Chỉnh sửa
+--SQL1
+CREATE USER VTTHA WITHOUT LOGIN;
+EXEC sp_addrolemember 'nhanvien', 'VTTHA';
+
+CREATE USER NguyenAnh WITHOUT LOGIN;
+EXEC sp_addrolemember 'nhansu', 'NguyenAnh';
+
+CREATE USER HoangLan WITHOUT LOGIN;
+EXEC sp_addrolemember 'nguoichamcong', 'HoangLan';
