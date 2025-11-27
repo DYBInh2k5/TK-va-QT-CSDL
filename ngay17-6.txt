@@ -1,0 +1,40 @@
+select
+from lop 11 join lop 12 on l1.malop <> 12.malop
+				and l1.msmh = 12.msmh
+				and l1.hocky = 12.msmh
+				and l1.giangvien = 12.giangvien
+select MSSV
+from hoc
+where malop = 'IT201DV01_01'
+UNION 
+select MSSV
+from hoc
+where malop = 'IT201DV01_01'
+INTERECT
+
+
+select DISTINCT MSSV, MSMH
+from hoc H JOIN LOP L ON H.malop = L.malop
+
+SELCT MSSV.MSMH
+FROM SINHVIEN, MONHOC
+EXCEPT
+selct DISTINCT MSSV, MSMH
+from hoc H JOIN Lop L on H.Malop = L.malop
+
+Select *
+from HOC
+WHERE malop IN (
+		select h.malop, COUNT(h.MSSV) AS Si_so
+		From HOC h
+		GROUP BY h.malop
+		HAVING COUNT(h.mssv) <= 2)
+--tim Danh sinh vien hoc mon co so du lieu nhung truoc do chua hoc hoac rot mon nhap mon lap trinh
+SELECT DISTINCT mssv, malop
+FROM Hoc
+Except
+Select Distinct h.mssv, h.malop
+from Hoc h join Lop L ON h.malop = l.malop
+where h.malop = 'IT201DV01%'
+
+

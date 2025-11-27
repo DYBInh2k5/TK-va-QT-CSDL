@@ -1,0 +1,96 @@
+-- MSSV 22301500
+-- Họ và Tên Võ Duy Bình
+-- Lớp IT209DV01
+-- Mã Đề B
+CREATE DATABASE QLThueXe_B;
+GO
+
+USE QLThueXe_B;
+GO
+
+CREATE TABLE Xe (
+    maxe CHAR(5) NOT NULL,
+    tenxe NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE KhachHang (
+    makhach CHAR(5) NOT NULL,
+    hoten NVARCHAR(100) NOT NULL
+);
+
+CREATE TABLE HopDongThueXe (
+    mahopdong CHAR(10) NOT NULL,
+    ngaythue DATE NOT NULL,
+    makhach CHAR(5) NOT NULL
+);
+
+CREATE TABLE ChiTietHopDong (
+    mahopdong CHAR(10) NOT NULL,
+    maxe CHAR(5) NOT NULL,
+    ngaynhan DATE DEFAULT GETDATE(),
+    ngaytra DATE NOT NULL,
+    giathue INT NOT NULL
+);
+
+ALTER TABLE Xe
+ADD CONSTRAINT PK_Xe PRIMARY KEY (maxe);
+GO
+
+ALTER TABLE KhachHang
+ADD CONSTRAINT PK_KhachHang PRIMARY KEY (makhach);
+GO
+
+ALTER TABLE HopDongThueXe
+ADD CONSTRAINT PK_HopDong PRIMARY KEY (mahopdong);
+GO
+
+ALTER TABLE ChiTietHopDong
+ADD CONSTRAINT PK_CTHopDong PRIMARY KEY (mahopdong, maxe);
+GO
+
+ALTER TABLE HopDongThueXe
+ADD CONSTRAINT FK_HD_KH FOREIGN KEY (makhach)
+REFERENCES KhachHang(makhach);
+GO
+
+ALTER TABLE ChiTietHopDong
+ADD CONSTRAINT FK_CTHD_HD FOREIGN KEY (mahopdong)
+REFERENCES HopDongThueXe(mahopdong);
+GO
+
+ALTER TABLE ChiTietHopDong
+ADD CONSTRAINT FK_CTHD_XE FOREIGN KEY (maxe)
+REFERENCES Xe(maxe);
+GO
+
+ALTER TABLE KhachHang
+ADD CONSTRAINT CK_MAKH CHECK (makhach LIKE 'KH[0-9][0-9][0-9]');
+GO
+
+--a.	Khách hàng Bùi Thu Hà đã thuê những xe có tên xe là gì
+SELECT DISTINCT x.tenxe
+FROM KhachHang kh
+JOIN HopDongThueXe hd ON kh.makhach = hd.makhach
+JOIN ChiTietHopDong ct ON hd.mahopdong = ct.mahopdong
+JOIN Xe x ON ct.maxe = x.maxe
+WHERE kh.hoten = N'Bùi Thu Hà';
+--b.	Tìm họ tên khách hàng và tên xe họ đã thuê
+SELECT kh.hoten, x.tenxe
+FROM KhachHang kh
+JOIN HopDongThueXe hd ON kh.makhach = hd.makhach
+JOIN ChiTietHopDong ct ON hd.mahopdong = ct.mahopdong
+JOIN Xe x ON ct.maxe = x.maxe;
+--c.	Tìm mã xe, tên xe của những xe có tên chứa chữ “Hyundai”
+SELECT maxe, tenxe
+FROM Xe
+WHERE tenxe LIKE N'%Hyundai%';
+--d.	Tìm tổng tiền của từng hợp đồng
+SELECT mahopdong, SUM(giathue) AS tongtien
+FROM ChiTietHopDong
+GROUP BY mahopdong;
+--e.	Tìm tên xe và tổng số ngày xe đã được thuê nhiều nhất 
+SELECT TOP 1 x.tenxe, SUM(DATEDIFF(DAY, ngaynhan, ngaytra)) AS tongngay
+FROM ChiTietHopDong ct
+JOIN Xe x ON ct.maxe = x.maxe
+GROUP BY x.tenxe
+ORDER BY tongngay DESC;
